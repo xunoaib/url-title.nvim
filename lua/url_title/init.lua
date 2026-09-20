@@ -83,10 +83,13 @@ function M.prompt_and_insert()
     if not input or vim.trim(input) == "" then
       return
     end
-    -- strip ALL whitespace, not just leading/trailing: a pasted URL can pick
-    -- up an embedded/trailing newline from the clipboard, which a 1-line
-    -- input widget may only show blank rather than as visible whitespace
-    local url = (input:gsub("%s+", ""))
+    -- Trim only the outer edges (a pasted URL can pick up a leading/trailing
+    -- newline from the clipboard). Any whitespace left in the middle is
+    -- percent-encoded rather than dropped, since deleting it could silently
+    -- corrupt the URL (e.g. a literal space in a path segment).
+    local url = vim.trim(input):gsub("%s", function(c)
+      return string.format("%%%02X", c:byte())
+    end)
     if not url:match("^%a[%w+.-]*://") then
       url = "https://" .. url
     end
