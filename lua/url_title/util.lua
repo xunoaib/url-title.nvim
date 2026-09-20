@@ -8,6 +8,16 @@ function M.sanitize_markdown(text)
   return (text:gsub("([\\`*_%[%]()#+.!|<>~%-])", "\\%1"))
 end
 
+--- Trim outer whitespace and percent-encode whatever whitespace is left in
+--- the middle (rather than dropping it, which could silently corrupt the
+--- URL). Used both for the final submitted value and to keep a single-line
+--- input widget from visually breaking when a paste contains a newline.
+function M.sanitize_url_input(text)
+  return (vim.trim(text):gsub("%s", function(c)
+    return string.format("%%%02X", c:byte())
+  end))
+end
+
 --- Find the URL under the cursor on the current line.
 --- @return string|nil url
 --- @return integer|nil start_col 0-indexed

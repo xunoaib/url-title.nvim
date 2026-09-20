@@ -77,19 +77,44 @@ function M.insert_from_selection()
   replace_with_link(row, start_col, end_col, url)
 end
 
+-- If the vim.ui.input backend just opened is a real prompt-buffer (Snacks,
+-- dressing.nvim, etc.), pasting text with a newline splits it across two
+-- buffer lines. A height-1 window then shows whichever line the cursor
+-- lands on, which can look empty even though the text wasn't lost. Keep it
+-- collapsed to a single, already-sanitized line as the user types/pastes so
+-- the widget never visually breaks.
+local function guard_single_line_input()
+  local buf = vim.api.nvim_get_current_buf()
+  if vim.bo[buf].buftype ~= "prompt" then
+    return
+  end
+  vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI", "TextChangedP" }, {
+    buffer = buf,
+    callback = function()
+      if not vim.api.nvim_buf_is_valid(buf) then
+        return
+      end
+      local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+      if #lines <= 1 then
+        return
+      end
+      local sanitized = require("url_title.util").sanitize_url_input(table.concat(lines, "\n"))
+      vim.api.nvim_buf_set_lines(buf, 0, -1, false, { sanitized })
+      for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+        pcall(vim.api.nvim_win_set_cursor, win, { 1, #sanitized })
+      end
+    end,
+  })
+end
+
 --- Prompt the user for a URL, then insert it as a markdown link at the cursor.
 function M.prompt_and_insert()
   vim.ui.input({ prompt = "URL: " }, function(input)
     if not input or vim.trim(input) == "" then
       return
     end
-    -- Trim only the outer edges (a pasted URL can pick up a leading/trailing
-    -- newline from the clipboard). Any whitespace left in the middle is
-    -- percent-encoded rather than dropped, since deleting it could silently
-    -- corrupt the URL (e.g. a literal space in a path segment).
-    local url = vim.trim(input):gsub("%s", function(c)
-      return string.format("%%%02X", c:byte())
-    end)
+    local util = require("url_title.util")
+    local url = util.sanitize_url_input(input)
     if not url:match("^%a[%w+.-]*://") then
       url = "https://" .. url
     end
@@ -101,12 +126,12 @@ function M.prompt_and_insert()
         vim.notify("url_title: " .. err, vim.log.levels.ERROR)
         return
       end
-      local util = require("url_title.util")
       local link = string.format("[%s](%s)", util.sanitize_markdown(title), url)
       vim.api.nvim_buf_set_text(0, row - 1, col, row - 1, col, { link })
       vim.api.nvim_win_set_cursor(0, { row, col + #link })
     end)
   end)
+  guard_single_line_input()
 end
 
 return M
