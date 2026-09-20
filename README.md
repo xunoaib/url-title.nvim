@@ -25,23 +25,6 @@ never blocks on the network request.
 }
 ```
 
-This repo is currently private, so lazy.nvim will clone it over the same
-transport your `git` is configured for (SSH by default here) using your own
-GitHub credentials.
-
-Developing locally instead:
-
-```lua
-{
-  dir = "~/dev/url-title.nvim",
-  config = function()
-    require("url_title").setup({
-      enable_default_keymaps = true,
-    })
-  end,
-}
-```
-
 ## Usage
 
 | Mode   | Default keymap | Command                   | Action                                                          |
