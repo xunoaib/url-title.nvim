@@ -12,7 +12,24 @@ never blocks on the network request.
 - Python 3 with `requests` and `beautifulsoup4` installed
 - Run `:checkhealth url_title` to verify
 
-## Installation (lazy.nvim, local plugin)
+## Installation (lazy.nvim)
+
+```lua
+{
+  "xunoaib/url-title.nvim",
+  config = function()
+    require("url_title").setup({
+      enable_default_keymaps = true,
+    })
+  end,
+}
+```
+
+This repo is currently private, so lazy.nvim will clone it over the same
+transport your `git` is configured for (SSH by default here) using your own
+GitHub credentials.
+
+Developing locally instead:
 
 ```lua
 {
