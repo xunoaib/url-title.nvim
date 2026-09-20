@@ -44,15 +44,23 @@ Developing locally instead:
 
 ## Usage
 
-- `:UrlTitleInsert` (or `<leader>ut` in normal mode with default keymaps) —
-  converts the URL under the cursor into a markdown link, replacing it in place.
-- Select a URL in visual mode and run `:'<,'>UrlTitleInsertVisual` (or press
-  `<leader>ut` in visual mode with default keymaps).
-- `:UrlTitlePrompt` (or `<leader>uT`) — prompts for a URL via `vim.ui.input`
-  and inserts the markdown link at the cursor.
-- `require("url_title").get_title(url, function(title, err) ... end)` — fetch
-  a title programmatically, for use by other scripts/plugins. Async; `title`
-  is `nil` and `err` is set on failure.
+| Mode   | Default keymap | Command                   | Action                                                          |
+|--------|-----------------|----------------------------|------------------------------------------------------------------|
+| Normal | `<leader>ut`    | `:UrlTitleInsert`          | Convert the URL under the cursor into a markdown link, in place  |
+| Visual | `<leader>ut`    | `:'<,'>UrlTitleInsertVisual` | Convert the selected URL into a markdown link, in place        |
+| Normal | `<leader>uT`    | `:UrlTitlePrompt`          | Prompt for a URL (`vim.ui.input`), insert the link at the cursor |
+
+Default keymaps are off unless you pass `enable_default_keymaps = true` to
+`setup()` (see Configuration below); the commands work either way. Keys are
+configurable via `keymaps.insert_at_cursor` / `keymaps.prompt`.
+
+Also exposed for other scripts/plugins:
+
+```lua
+require("url_title").get_title(url, function(title, err)
+  -- async; title is nil and err is set on failure
+end)
+```
 
 ## Configuration
 
