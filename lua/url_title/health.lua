@@ -26,6 +26,12 @@ function M.check()
   else
     health.error("missing python dependencies", { "install with: pip install requests beautifulsoup4" })
   end
+
+  if #config.fallbacks == 0 then
+    health.info("403 fallbacks disabled: no URLs are sent to third parties")
+  else
+    health.info("on HTTP 403, tries in order: " .. table.concat(config.fallbacks, ", "))
+  end
 end
 
 return M

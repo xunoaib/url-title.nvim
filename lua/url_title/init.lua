@@ -7,6 +7,13 @@ M.config = {
   python = "python3",
   script = plugin_root .. "/python/get_title.py",
   timeout = 10000, -- ms
+  -- Where to look for a title when a site answers HTTP 403, tried in order.
+  -- Remove entries to opt out (`{}` disables fallbacks entirely):
+  --   "wayback"    ask archive.org for its archived copy (sends the URL to archive.org)
+  --   "duckduckgo" search DuckDuckGo for the URL (sends the URL to DuckDuckGo)
+  --   "yahoo"      search Yahoo for the URL (sends the URL to Yahoo)
+  --   "url_slug"   complete/build the title from the URL's own text (no network)
+  fallbacks = { "wayback", "duckduckgo", "yahoo", "url_slug" },
   enable_default_keymaps = false,
   keymaps = {
     insert_at_cursor = "<leader>ut",
@@ -14,9 +21,28 @@ M.config = {
   },
 }
 
+M.valid_fallbacks = { "wayback", "duckduckgo", "yahoo", "url_slug" }
+
 --- Setup user configuration
 function M.setup(opts)
   M.config = vim.tbl_deep_extend("force", M.config, opts or {})
+
+  local unknown = vim.tbl_filter(function(name)
+    return not vim.tbl_contains(M.valid_fallbacks, name)
+  end, M.config.fallbacks)
+  if #unknown > 0 then
+    vim.notify(
+      string.format(
+        "url_title: ignoring unknown fallbacks: %s (valid: %s)",
+        table.concat(unknown, ", "),
+        table.concat(M.valid_fallbacks, ", ")
+      ),
+      vim.log.levels.WARN
+    )
+    M.config.fallbacks = vim.tbl_filter(function(name)
+      return vim.tbl_contains(M.valid_fallbacks, name)
+    end, M.config.fallbacks)
+  end
 
   if M.config.enable_default_keymaps then
     vim.keymap.set("n", M.config.keymaps.insert_at_cursor, function()
@@ -37,18 +63,25 @@ end
 --- Exposed so other scripts/plugins can retrieve a title without going through
 --- the buffer-editing commands below.
 --- @param url string
---- @param callback fun(title: string|nil, err: string|nil)
+--- @param callback fun(title: string|nil, err: string|nil, note: string|nil)
 function M.get_title(url, callback)
   require("url_title.fetch").get_title(url, callback)
 end
 
+local function notify_fallback(note)
+  if note then
+    vim.notify("url_title: " .. note, vim.log.levels.WARN)
+  end
+end
+
 local function replace_with_link(row, start_col, end_col, url)
   vim.notify("url_title: fetching title...", vim.log.levels.INFO)
-  M.get_title(url, function(title, err)
+  M.get_title(url, function(title, err, note)
     if err then
       vim.notify("url_title: " .. err, vim.log.levels.ERROR)
       return
     end
+    notify_fallback(note)
     local util = require("url_title.util")
     local link = string.format("[%s](%s)", util.sanitize_markdown(title), url)
     vim.api.nvim_buf_set_text(0, row - 1, start_col, row - 1, end_col, { link })
@@ -121,11 +154,12 @@ function M.prompt_and_insert()
 
     local row, col = unpack(vim.api.nvim_win_get_cursor(0))
     vim.notify("url_title: fetching title...", vim.log.levels.INFO)
-    M.get_title(url, function(title, err)
+    M.get_title(url, function(title, err, note)
       if err then
         vim.notify("url_title: " .. err, vim.log.levels.ERROR)
         return
       end
+      notify_fallback(note)
       local link = string.format("[%s](%s)", util.sanitize_markdown(title), url)
       vim.api.nvim_buf_set_text(0, row - 1, col, row - 1, col, { link })
       vim.api.nvim_win_set_cursor(0, { row, col + #link })

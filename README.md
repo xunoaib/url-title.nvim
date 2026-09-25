@@ -40,8 +40,9 @@ configurable via `keymaps.insert_at_cursor` / `keymaps.prompt`.
 Also exposed for other scripts/plugins:
 
 ```lua
-require("url_title").get_title(url, function(title, err)
-  -- async; title is nil and err is set on failure
+require("url_title").get_title(url, function(title, err, note)
+  -- async; title is nil and err is set on failure.
+  -- note is set when a fallback was used (see "403 fallbacks")
 end)
 ```
 
@@ -52,6 +53,7 @@ require("url_title").setup({
   python = "python3",                 -- interpreter to run the fetch script with
   -- script = "/path/to/get_title.py", -- override the bundled get_title.py path
   timeout = 10000,                    -- ms before the fetch is killed
+  fallbacks = { "wayback", "duckduckgo", "yahoo", "url_slug" }, -- see below
   enable_default_keymaps = false,
   keymaps = {
     insert_at_cursor = "<leader>ut",  -- normal + visual mode
@@ -59,3 +61,26 @@ require("url_title").setup({
   },
 })
 ```
+
+## 403 fallbacks
+
+Some sites answer scripted requests with HTTP 403. When that
+happens the plugin tries the sources in `fallbacks`, in order, and shows a
+warning notification saying which one supplied the title:
+
+| Name         | What it does                                                | Privacy                              |
+|--------------|-------------------------------------------------------------|--------------------------------------|
+| `wayback`    | Uses the title of the Wayback Machine's archived copy       | URL is sent to archive.org           |
+| `duckduckgo` | Searches DuckDuckGo for the URL and uses the matching result | URL is sent to DuckDuckGo            |
+| `yahoo`      | Same, using Yahoo Search                                     | URL is sent to Yahoo                 |
+| `url_slug`   | Completes a truncated search title from the URL's own text, or builds a title from it if nothing else worked | None (local only) |
+
+Search engines truncate long titles, so a truncated result is completed from the
+URL slug when its words match the start of it (punctuation the URL doesn't
+carry, such as colons, is lost). Without `url_slug` a truncated title is used
+as-is, minus the trailing "...".
+
+The fallbacks only run after a 403; normal pages never contact these services.
+To opt out of any of them, remove it from the list, e.g. `fallbacks = { "url_slug" }`
+to stay fully local, or `fallbacks = {}` to disable fallbacks entirely.
+`:checkhealth url_title` shows which are active.

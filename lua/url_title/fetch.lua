@@ -2,12 +2,13 @@ local M = {}
 
 --- Asynchronously fetch the page title for `url`.
 --- @param url string
---- @param callback fun(title: string|nil, err: string|nil) called on the main loop
+--- @param callback fun(title: string|nil, err: string|nil, note: string|nil) called on the main loop.
+---   `note` is set when a fallback source was used (e.g. after an HTTP 403).
 function M.get_title(url, callback)
   local config = require("url_title").config
 
   vim.system(
-    { config.python, config.script, url },
+    { config.python, config.script, "--fallbacks", table.concat(config.fallbacks, ","), "--", url },
     { text = true, timeout = config.timeout },
     function(result)
       vim.schedule(function()
@@ -26,7 +27,8 @@ function M.get_title(url, callback)
           return
         end
 
-        callback(title, nil)
+        local note = vim.trim(result.stderr or ""):gsub("^Note:%s*", "")
+        callback(title, nil, note ~= "" and note or nil)
       end)
     end
   )
