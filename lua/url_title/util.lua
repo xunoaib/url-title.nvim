@@ -4,8 +4,12 @@ local M = {}
 M.URL_PATTERN = "https?://[^%s()<>%[%]\"']+"
 
 --- Escape markdown-significant characters so a fetched title is safe as a link label.
+--- `#`, `-`, `+`, and `.` are only special as the first character of a line
+--- (ATX headings, list markers, ordered-list markers); since the title is
+--- always preceded by the link's opening `[`, they can never land at a true
+--- line start here, so they're left unescaped.
 function M.sanitize_markdown(text)
-  return (text:gsub("([\\`*_%[%]()#+.!|<>~%-])", "\\%1"))
+  return (text:gsub("([\\`*_%[%]()!|<>~])", "\\%1"))
 end
 
 --- Trim outer whitespace and percent-encode whatever whitespace is left in
